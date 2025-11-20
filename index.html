@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discussion App</title>
+<style>
+  body { font-family: Arial; display: flex; height: 100vh; margin: 0; }
+  .left { width: 35%; border-right: 1px solid #ccc; padding: 10px; overflow-y: auto; }
+  .right { width: 65%; padding: 10px; }
+  .question, .response { border: 1px solid #ccc; padding: 5px; margin: 5px 0; cursor: pointer; }
+  .votes { margin-right: 10px; }
+</style>
+</head>
+<body>
+
+<div class="left">
+  <input id="search" placeholder="Search questions" style="width:100%; margin-bottom:10px;">
+  <button id="newQBtn">New Question</button>
+  <div id="questionList"></div>
+</div>
+
+<div class="right">
+  <form id="questionForm">
+    <h3>Ask a Question</h3>
+    <input id="qTitle" placeholder="Title" required><br><br>
+    <textarea id="qBody" placeholder="Question" required></textarea><br><br>
+    <button type="submit">Post Question</button>
+  </form>
+
+  <div id="selectedQuestion" style="display:none;">
+    <h3 id="selTitle"></h3>
+    <p id="selBody"></p>
+    <button id="resolveBtn">Resolve</button>
+    <h4>Responses:</h4>
+    <div id="responseList"></div>
+    <form id="responseForm">
+      <input id="rName" placeholder="Name" required><br><br>
+      <textarea id="rComment" placeholder="Comment" required></textarea><br><br>
+      <button type="submit">Submit Response</button>
+    </form>
+  </div>
+</div>
+
+<script>
+let questions = [];
+let selectedQ = null;
+
+function renderQuestions(filter='') {
+  const list = document.getElementById('questionList');
+  list.innerHTML = '';
+  questions
+    .filter(q => q.title.toLowerCase().includes(filter.toLowerCase()))
+    .sort((a,b) => b.votes - a.votes)
+    .forEach(q => {
+      const div = document.createElement('div');
+      div.className = 'question';
+      div.innerHTML = `<span class="votes">${q.votes}</span>${q.title} 
+        <button onclick="voteQ(${q.id},1)">+</button>
+        <button onclick="voteQ(${q.id},-1)">-</button>`;
+      div.onclick = () => selectQuestion(q.id);
+      list.appendChild(div);
+    });
+}
+
+function renderSelected() {
+  if(!selectedQ) return;
+  document.getElementById('selectedQuestion').style.display='block';
+  document.getElementById('questionForm').style.display='none';
+  document.getElementById('selTitle').innerText = selectedQ.title;
+  document.getElementById('selBody').innerText = selectedQ.body;
+  const respList = document.getElementById('responseList');
+  respList.innerHTML = '';
+  selectedQ.responses
+    .sort((a,b)=>b.votes-a.votes)
+    .forEach(r => {
+      const d = document.createElement('div');
+      d.className='response';
+      d.innerHTML = `<span class="votes">${r.votes}</span><b>${r.name}:</b> ${r.comment} 
+        <button onclick="voteR(${r.id},1)">+</button>
+        <button onclick="voteR(${r.id},-1)">-</button>`;
+      respList.appendChild(d);
+    });
+}
+
+function voteQ(id, delta) {
+  const q = questions.find(q=>q.id===id);
+  q.votes += delta;
+  renderQuestions(document.getElementById('search').value);
+  if(selectedQ && selectedQ.id===id) selectedQ = q;
+  renderSelected();
+}
+
+function voteR(id, delta) {
+  const r = selectedQ.responses.find(r=>r.id===id);
+  r.votes += delta;
+  renderSelected();
+}
+
+function selectQuestion(id) {
+  selectedQ = questions.find(q=>q.id===id);
+  renderSelected();
+}
+
+document.getElementById('questionForm').onsubmit = function(e){
+  e.preventDefault();
+  const title = document.getElementById('qTitle').value;
+  const body = document.getElementById('qBody').value;
+  const q = {id: Date.now(), title, body, votes:0, responses:[]};
+  questions.push(q);
+  document.getElementById('qTitle').value='';
+  document.getElementById('qBody').value='';
+  renderQuestions();
+}
+
+document.getElementById('responseForm').onsubmit = function(e){
+  e.preventDefault();
+  const name = document.getElementById('rName').value;
+  const comment = document.getElementById('rComment').value;
+  selectedQ.responses.push({id:Date.now(), name, comment, votes:0});
+  document.getElementById('rName').value='';
+  document.getElementById('rComment').value='';
+  renderSelected();
+  renderQuestions(document.getElementById('search').value);
+}
+
+document.getElementById('resolveBtn').onclick = function(){
+  questions = questions.filter(q=>q.id!==selectedQ.id);
+  selectedQ=null;
+  document.getElementById('selectedQuestion').style.display='none';
+  document.getElementById('questionForm').style.display='block';
+  renderQuestions(document.getElementById('search').value);
+}
+
+document.getElementById('search').oninput = function(){
+  renderQuestions(this.value);
+}
+
+document.getElementById('newQBtn').onclick = function(){
+  selectedQ=null;
+  document.getElementById('selectedQuestion').style.display='none';
+  document.getElementById('questionForm').style.display='block';
+}
+</script>
+
+</body>
+</html>
